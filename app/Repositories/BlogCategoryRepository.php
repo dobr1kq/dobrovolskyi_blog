@@ -19,6 +19,13 @@ class BlogCategoryRepository extends CoreRepository
      *  @param int $id
      *  @return Model
      */
+    public function getAllWithPaginate($perPage = 15)
+    {
+        return $this->startConditions()
+                    ->select('blog_categories.*', \DB::raw('CONCAT (id, ". ", title) AS id_title'))
+                    ->paginate($perPage);
+    }
+
     public function getEdit($id)
     {
         return $this->startConditions()->find($id);
@@ -47,6 +54,7 @@ class BlogCategoryRepository extends CoreRepository
         $result = $this                           //2 варіант
             ->startConditions()
             ->selectRaw($columns)
+            ->with(['parentCategory:id,title',])
             ->toBase()
             ->get();
 

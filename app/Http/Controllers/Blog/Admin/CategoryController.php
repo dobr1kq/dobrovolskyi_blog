@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Blog\Admin;
 
 //use App\Http\Controllers\Controller;
 use App\Models\BlogCategory;
+use App\Repositories\BlogCategoryRepository;
 use Illuminate\Support\Str;
 //use Illuminate\Http\Request;
 use App\Http\Requests\BlogCategoryUpdateRequest;
@@ -11,12 +12,23 @@ use App\Http\Requests\BlogCategoryCreateRequest;
 
 class CategoryController extends BaseController
 {
+     /**
+     * @var BlogCategoryRepository
+     */
+    private $blogCategoryRepository;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->blogCategoryRepository = app(BlogCategoryRepository::class);
+    }
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $paginator = BlogCategory::paginate(5);
+        //$paginator = BlogCategory::paginate(5);
+        $paginator = $this->blogCategoryRepository->getAllWithPaginate(5);
 
         return view('blog.admin.categories.index', compact('paginator'));
         //dd(__METHOD__);
@@ -28,7 +40,7 @@ class CategoryController extends BaseController
     public function create()
     {
         $item = new BlogCategory();
-        $categoryList = BlogCategory::all();
+        $categoryList = $this->blogCategoryRepository->getForComboBox(); 
 
         return view('blog.admin.categories.edit', compact('item', 'categoryList'));
         //dd(__METHOD__);
@@ -69,13 +81,15 @@ class CategoryController extends BaseController
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit($id)
     {
-        $item = BlogCategory::findOrFail($id);
-        $categoryList = BlogCategory::all();
-
+        $item = $this->blogCategoryRepository->getEdit($id);
+        if (empty($item)) {                         //помилка, якщо репозиторій не знайде наш ід
+            abort(404);
+        }
+        $categoryList = $this->blogCategoryRepository->getForComboBox($item->parent_id);
+     
         return view('blog.admin.categories.edit', compact('item', 'categoryList'));
-        //dd(__METHOD__);
     }
 
     /**
@@ -83,7 +97,7 @@ class CategoryController extends BaseController
      */
     public function update(BlogCategoryUpdateRequest $request, $id)
     {
-        $item = BlogCategory::find($id);
+        $item = $this->blogCategoryRepository->getEdit($id);
         if (empty($item)) { //якщо ід не знайдено
             return back() //redirect back
                 ->withErrors(['msg' => "Запис id=[{$id}] не знайдено"]) //видати помилку
@@ -115,5 +129,24 @@ class CategoryController extends BaseController
     public function destroy(string $id)
     {
         //dd(__METHOD__);
+    }
+
+    /**
+     * Отримати категорію для виводу пагінатором
+     * 
+     * @param int|null $perPage
+     * 
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
+    public function getAllWithPaginate($perPage = null)
+    {
+        $columns = ['id', 'title', 'parent_id'];
+
+        $result = $this
+            ->startConditions()
+            ->select($columns)
+            ->paginate($perPage); //можна $columns додати сюди
+            
+        return $result;
     }
 }

@@ -9,6 +9,15 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\BlogPost;
 use App\Http\Requests\BlogPostCreateRequest;
+use App\Jobs\BlogPostAfterCreateJob;
+use App\Jobs\BlogPostAfterDeleteJob;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Carbon;
 
 class PostController extends BaseController
 {
@@ -59,6 +68,7 @@ class PostController extends BaseController
         $item = (new BlogPost())->create($data); //створюємо об'єкт і додаємо в БД
 
         if ($item) {
+            BlogPostAfterCreateJob::dispatch($item);
             return redirect()
                 ->route('blog.admin.posts.edit', [$item->id])
                 ->with(['success' => 'Успішно збережено']);
@@ -128,6 +138,7 @@ class PostController extends BaseController
         //$result = BlogPost::find($id)->forceDelete(); //повне видалення з БД
 
         if ($result) {
+            BlogPostAfterDeleteJob::dispatch($id)->delay(now()->addSeconds(20));
             return redirect()
                 ->route('blog.admin.posts.index')
                 ->with(['success' => "Запис id[$id] видалено"]);
